@@ -2,17 +2,16 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class CameraController : MonoBehaviour
+public class DynamicCam : MonoBehaviour
 {
-
-    [SerializeField] private GameObject camB;
+    [SerializeField] private GameObject secondCam;
 
     private void OnTriggerEnter(Collider other)
     {
         switch (other.gameObject.tag)
         {
             case "CamTrigger":
-                camB.SetActive(true);
+                secondCam.SetActive(true);
                 break;
         }
     }
@@ -22,7 +21,7 @@ public class CameraController : MonoBehaviour
         switch (other.gameObject.tag)
         {
             case "CamTrigger":
-                camB.SetActive(false);
+                secondCam.SetActive(false);
                 break;
         }
     }
