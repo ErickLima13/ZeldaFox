@@ -8,18 +8,6 @@ public class Grass : MonoBehaviour
 
     private bool isCut;
 
-    // Start is called before the first frame update
-    void Start()
-    {
-        
-    }
-
-    // Update is called once per frame
-    void Update()
-    {
-        
-    }
-
     private void GetHit(int amount)
     {
         if (!isCut)
@@ -28,6 +16,5 @@ public class Grass : MonoBehaviour
             fxHit.Emit(Random.Range(10, 50));
             isCut = true;
         }
-        
     }
 }

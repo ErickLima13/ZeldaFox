@@ -20,7 +20,6 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private Collider[] hitInfo;
     [SerializeField] private int amountDamage;
 
-
     private Vector3 direction;
 
     private bool isWalk;
