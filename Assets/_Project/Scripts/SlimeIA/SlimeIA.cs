@@ -17,15 +17,17 @@ public class SlimeIA : MonoBehaviour
 
     [SerializeField] enemyState state;
 
-    public const float idleWaitTime = 3f;
-    public const float patrolWaitTime = 5f;
-
     //IA
     private NavMeshAgent agent;
 
     private Vector3 destination;
 
     private int idWaypoint;
+
+    private bool isWalk;
+    private bool isAlert;
+    private bool isPlayerVisible;
+    private bool isAttack;
 
     private void Initialization()
     {
@@ -44,7 +46,30 @@ public class SlimeIA : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+        Walk();
         StateManager();
+
+    }
+
+    private void OnTriggerEnter(Collider other)
+    {
+        if (other.gameObject.CompareTag("Player"))
+        {
+            isPlayerVisible = true;
+
+            if(state == enemyState.IDLE || state == enemyState.PATROL)
+            {
+                ChangeState(enemyState.ALERT);
+            }
+        }
+    }
+
+    private void OnTriggerExit(Collider other)
+    {
+        if (other.gameObject.CompareTag("Player"))
+        {
+            isPlayerVisible = false;
+        }
     }
 
     #region My metods
@@ -54,6 +79,21 @@ public class SlimeIA : MonoBehaviour
         isDie = true;
         yield return new WaitForSeconds(2f);
         Destroy(this.gameObject);
+    }
+
+    private void Walk()
+    {
+        if (agent.desiredVelocity.magnitude >= 0.1f)
+        {
+            isWalk = true;
+        }
+        else
+        {
+            isWalk = false;
+        }
+
+        animator.SetBool("isWalk", isWalk);
+        animator.SetBool("isAlert", isAlert);
     }
 
     private void GetHit(int amount)
@@ -66,7 +106,8 @@ public class SlimeIA : MonoBehaviour
         HP -= amount;
 
         if (HP > 0)
-        {            
+        {
+            ChangeState(enemyState.FURY);
             animator.SetTrigger("GetHit");
             fxHit.Emit(Random.Range(5, 10));
         }
@@ -82,19 +123,24 @@ public class SlimeIA : MonoBehaviour
     {
         switch (state)
         {
-            case enemyState.IDLE:
-
-                break;
-            case enemyState.ALERT:
-
-                break;
-            case enemyState.EXPLORE:
-
-                break;
             case enemyState.FOLLOW:
+                destination = _gameManager.player.position;
+                agent.destination = destination;
+
+                if(agent.remainingDistance <= agent.stoppingDistance)
+                {
+                    Attack();
+                }
 
                 break;
             case enemyState.FURY:
+                destination = _gameManager.player.transform.position;
+                agent.destination = destination;
+
+                if (agent.remainingDistance <= agent.stoppingDistance)
+                {
+                    Attack();
+                }
 
                 break;
             case enemyState.PATROL:
@@ -108,50 +154,84 @@ public class SlimeIA : MonoBehaviour
     private void ChangeState(enemyState newState)
     {
         StopAllCoroutines();
+        isAlert = false;
         state = newState;
-        print(newState);
 
-        switch (state)
+        switch (newState)
         {
             case enemyState.IDLE:
+                agent.stoppingDistance = 0;
                 destination = transform.position;
                 agent.destination = destination;
                 StartCoroutine(nameof(IDLE));
                 break;
             case enemyState.ALERT:
-
-                break;
-            case enemyState.EXPLORE:
-
+                agent.stoppingDistance = 0;
+                destination = transform.position;
+                agent.destination = destination;
+                isAlert = true;
+                StartCoroutine(nameof(ALERT));
                 break;
             case enemyState.FOLLOW:
-
+                agent.stoppingDistance = _gameManager.slimeDistanceToAttack;
+                StartCoroutine(nameof(FOLLOW));
                 break;
             case enemyState.FURY:
-
+                agent.stoppingDistance = _gameManager.slimeDistanceToAttack;
                 break;
             case enemyState.PATROL:
+                agent.stoppingDistance = 0;
                 idWaypoint = Random.Range(0, _gameManager.slimeWayPoints.Length);
                 destination = _gameManager.slimeWayPoints[idWaypoint].transform.position;
                 agent.destination = destination;
                 StartCoroutine(nameof(PATROL));
                 break;
         }
+
+        
     }
 
     private IEnumerator IDLE()
     {
-        yield return new WaitForSeconds(idleWaitTime);
+        yield return new WaitForSeconds(_gameManager.slimeIdleWaitTime);
         StayStiil(50);
 
     }
 
     private IEnumerator PATROL()
     {
-        yield return new WaitForSeconds(patrolWaitTime);
+        yield return new WaitUntil(() => agent.remainingDistance <= 0);
         StayStiil(30);
+    }
 
+    private IEnumerator FOLLOW()
+    {
+        yield return new WaitUntil(() => !isPlayerVisible);
 
+        print("perdi");
+
+        yield return new WaitForSeconds(_gameManager.slimeAlertTime);
+
+        StayStiil(50);
+    }
+
+    private IEnumerator ALERT()
+    {
+        yield return new WaitForSeconds(_gameManager.slimeAlertTime);
+        if (isPlayerVisible)
+        {
+            ChangeState(enemyState.FOLLOW);
+        }
+        else
+        {
+            StayStiil(10);
+        }
+    }
+
+    private IEnumerator ATTACK()
+    {
+        yield return new WaitForSeconds(_gameManager.slimeAttackDelay);
+        isAttack = false;
     }
 
     private int RandomRange()
@@ -170,6 +250,20 @@ public class SlimeIA : MonoBehaviour
         {
             ChangeState(enemyState.PATROL);
         }
+    }
+
+    private void Attack()
+    {
+        if (!isAttack)
+        {
+            isAttack = true;
+            animator.SetTrigger("Attack");
+        }
+    }
+
+    private void AttackIsDone()
+    {
+        StartCoroutine(nameof(ATTACK));
     }
 
     #endregion
